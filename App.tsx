@@ -34,7 +34,6 @@ export const MOCK_VIDEOS: Video[] = [
   { id: '4', title: "Water Blast", videoUrl: staticFilesUrl + 'water_v2.mp4', description: "A wall of water punching through." },
 ];
 
-// Missing HeroCarousel component for background animation
 const HeroCarousel: React.FC<{ forceMute?: boolean }> = ({ forceMute }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -68,36 +67,42 @@ const HeroCarousel: React.FC<{ forceMute?: boolean }> = ({ forceMute }) => {
   );
 };
 
-// Missing ApiKeyDialog component for API key selection
 const ApiKeyDialog: React.FC<{ isOpen: boolean; onClose: () => void; onSelect: () => void }> = ({ isOpen, onClose, onSelect }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl">
-        <div className="flex justify-between items-start mb-6">
-          <div className="w-12 h-12 bg-white text-black rounded-xl flex items-center justify-center font-serif italic text-2xl">K</div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors"><X size={20} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+      <div className="bg-zinc-900 border border-zinc-800 p-10 rounded-[3rem] max-w-md w-full shadow-2xl scale-in-center">
+        <div className="flex justify-between items-start mb-8">
+          <div className="w-14 h-14 bg-white text-black rounded-2xl flex items-center justify-center font-serif italic text-3xl shadow-lg">K</div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-2 hover:bg-zinc-800 rounded-full"><X size={24} /></button>
         </div>
-        <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-4">API Key Required</h3>
-        <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-          To generate cinematic videos with Veo, you need to use your own Google Cloud API key from a paid project with billing enabled.
+        
+        <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4 leading-none">Chave de IA Necessária</h3>
+        <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+          Para criar anúncios cinematográficos com tecnologia <span className="text-white font-bold">Veo</span>, você precisa conectar sua própria chave do Google Cloud de um projeto com faturamento ativo.
         </p>
+        
         <div className="space-y-4">
+          <button 
+            onClick={onSelect}
+            className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-zinc-200 transition-all uppercase tracking-widest flex items-center justify-center gap-3 text-sm active:scale-95 shadow-xl shadow-white/5"
+          >
+            <Key size={18} /> Conectar Minha Chave
+          </button>
+          
           <a 
             href="https://ai.google.dev/gemini-api/docs/billing" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="block text-center py-4 border border-zinc-800 rounded-xl text-zinc-400 text-xs font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors"
+            className="block text-center py-4 border border-zinc-800 rounded-xl text-zinc-500 text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800 hover:text-white transition-all"
           >
-            Billing Documentation
+            Ver Guia de Configuração
           </a>
-          <button 
-            onClick={onSelect}
-            className="w-full py-4 bg-white text-black font-black rounded-xl hover:bg-zinc-200 transition-colors uppercase tracking-widest flex items-center justify-center gap-2"
-          >
-            <Key size={18} /> Select API Key
-          </button>
         </div>
+        
+        <p className="text-center mt-6 text-[9px] text-zinc-600 font-bold uppercase tracking-widest">
+          Sua chave é mantida em segurança e nunca é armazenada em nossos servidores.
+        </p>
       </div>
     </div>
   );
@@ -124,7 +129,6 @@ const App: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar perfil do localStorage ao iniciar
   useEffect(() => {
     const saved = localStorage.getItem('typeMotion_profile');
     if (saved) {
@@ -137,10 +141,21 @@ const App: React.FC = () => {
       setViewMode('auth');
       return;
     }
-    // @ts-ignore - aistudio is injected by the environment
+    // @ts-ignore
     const isKeySelected = await window.aistudio?.hasSelectedApiKey();
-    if (!isKeySelected) setShowKeyDialog(true);
-    else setViewMode('create');
+    if (!isKeySelected) {
+      setShowKeyDialog(true);
+    } else {
+      setViewMode('create');
+    }
+  };
+
+  const handleOpenKeySelection = async () => {
+    setShowKeyDialog(false);
+    // @ts-ignore
+    await window.aistudio.openSelectKey();
+    // Resolve o bloqueio: Assume sucesso e libera a entrada na aplicação imediatamente
+    setViewMode('create');
   };
 
   const saveProfile = (e: React.FormEvent<HTMLFormElement>) => {
@@ -161,9 +176,14 @@ const App: React.FC = () => {
   const startProcess = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
-    // @ts-ignore - aistudio is injected by the environment
+    
+    // Verificação de última hora da chave
+    // @ts-ignore
     const keySelected = await window.aistudio?.hasSelectedApiKey();
-    if (!keySelected) { setShowKeyDialog(true); return; }
+    if (!keySelected) { 
+      setShowKeyDialog(true); 
+      return; 
+    }
 
     setState(AppState.GENERATING_IMAGE);
     setVideoSrc(null);
@@ -174,7 +194,6 @@ const App: React.FC = () => {
     setStatusMessage("Analisando produto...");
 
     try {
-      // Primeiro gera a propaganda para usá-la como legenda no vídeo
       const generatedCaption = await generateAdCaption(inputText, styleToUse, contentUrl);
       setAdCaption(generatedCaption);
 
@@ -194,6 +213,10 @@ const App: React.FC = () => {
       setVideoSrc(videoUrl);
       setState(AppState.PLAYING);
     } catch (err: any) {
+      // Se falhar por falta de chave, resetamos e pedimos de novo
+      if (err.message?.includes("entity was not found")) {
+        setShowKeyDialog(true);
+      }
       setStatusMessage(err.message || "Erro ao processar.");
       setState(AppState.ERROR);
     }
@@ -419,9 +442,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans overflow-x-hidden">
-      <ApiKeyDialog isOpen={showKeyDialog} onClose={() => setShowKeyDialog(false)} onSelect={async () => { setShowKeyDialog(false); 
-        // @ts-ignore
-        await window.aistudio.openSelectKey(); setViewMode('create'); }} />
+      <ApiKeyDialog isOpen={showKeyDialog} onClose={() => setShowKeyDialog(false)} onSelect={handleOpenKeySelection} />
       <div className="h-screen flex items-center justify-center p-4 lg:p-10">
         <div className={`transition-all duration-1000 ease-[cubic-bezier(0.25,0.8,0.25,1)] w-full max-7xl h-full flex flex-col relative ${viewMode === 'create' || viewMode === 'auth' ? '' : 'lg:flex-row'}`}>
           <div className={`transition-all duration-1000 w-full h-full relative ${viewMode === 'create' || viewMode === 'auth' ? 'hidden' : 'block'}`}>
